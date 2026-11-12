@@ -1,0 +1,30 @@
+# Environments & Dependencies
+.venv/
+node_modules/
+frontend/node_modules/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+data/ai_settings.json
+
+# Local databases & runtime storage
+data/documind.db*
+data/uploads/*
+!data/uploads/.gitkeep
+results/*.json
+
+# Build and caches
+dist/
+frontend/dist/
+build/
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local system files
+.DS_Store
+Thumbs.db
+*.log
