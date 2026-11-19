@@ -147,7 +147,7 @@ def _has_borderless_table_signal(
                     if aligned_multi_col_rows >= 2:
                         return True
 
-    if has_caption and tabular_lines >= 1:
+    if has_caption and (tabular_lines >= 1 or len(_NUM_TOKEN_RE.findall(non_toc_text)) >= 3):
         return True
 
     return False
@@ -277,16 +277,24 @@ class PyMuPDFParser(DocumentParser):
 
             # 1. Extract tables only when indicators confirm bordered or genuine borderless tables
             try:
-                line_count, rect_count, table_clip = _analyze_page_drawings(page_rect, drawings)
-                has_vector_grid = (line_count >= 2 or rect_count >= 4)
+                # Optimization Two: Skip drawing analysis on pages with insufficient drawing elements (< 2 drawings)
+                if len(drawings) < 2:
+                    line_count, rect_count, table_clip = 0, 0, None
+                    has_vector_grid = False
+                else:
+                    line_count, rect_count, table_clip = _analyze_page_drawings(page_rect, drawings)
+                    has_vector_grid = (line_count >= 2 or rect_count >= 4)
+
                 tabs = None
 
                 if has_vector_grid and table_clip is not None:
                     # Fast path: clipped pure vector table finder without ONNX layout network
                     tabs = page.find_tables(use_layout=False, paths=drawings, clip=table_clip)
-                    # Fallback for row-banded tables without vertical grid lines (e.g. shaded strips)
+                    # Optimization One: Inexpensive pre-check for tabular characteristics before heavy layout fallback
                     if (not tabs or not tabs.tables) and rect_count >= 4:
-                        tabs = page.find_tables(use_layout=True, paths=drawings, clip=table_clip)
+                        block_text = "\n".join(b[4] for b in raw_blocks if len(b) >= 5 and b[4])
+                        if _has_borderless_table_signal(block_text, raw_blocks=raw_blocks):
+                            tabs = page.find_tables(use_layout=True, paths=drawings, clip=table_clip)
                 else:
                     block_text = "\n".join(b[4] for b in raw_blocks if len(b) >= 5 and b[4])
                     if _has_borderless_table_signal(block_text, raw_blocks=raw_blocks):
