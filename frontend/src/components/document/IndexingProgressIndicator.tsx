@@ -72,7 +72,7 @@ export const IndexingProgressIndicator: React.FC<IndexingProgressIndicatorProps>
             </span>
           )}
         </span>
-        <span className={isFailed ? 'text-status-error' : 'text-brand-light font-mono'}>
+        <span className={isFailed ? 'text-status-error' : 'text-brand font-mono font-semibold'}>
           {isFailed ? 'Error' : progressLabel}
         </span>
       </div>
@@ -86,13 +86,13 @@ export const IndexingProgressIndicator: React.FC<IndexingProgressIndicatorProps>
             <div key={stage.key} className="space-y-1">
               <div
                 className={cn(
-                  'h-1.5 w-full rounded-full transition-all',
+                  'h-1.5 w-full rounded-full transition-all duration-200 ease-standard',
                   isFailed
                     ? 'bg-status-error/30'
                     : isDone
-                    ? 'bg-brand'
+                    ? 'bg-brand shadow-xs shadow-brand/20'
                     : isCurrent
-                    ? 'bg-brand/50 animate-pulse'
+                    ? 'bg-brand/60 animate-pulse'
                     : 'bg-surface-secondary'
                 )}
               />
