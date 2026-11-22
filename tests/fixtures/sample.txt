@@ -1,0 +1,7 @@
+Section 1: General Overview
+
+DocuMind processes documents locally with high privacy and precision.
+
+Section 2: Architecture
+
+The architecture relies on PyMuPDF, SQLite, and Ollama language models.
