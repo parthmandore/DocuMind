@@ -1,0 +1,22 @@
+# DocuMind Robots Policy
+# https://github.com/parthmandore/DocuMind
+
+User-agent: *
+
+# Allow crawling of the public application gateway
+Allow: /$
+Allow: /favicon.*
+Allow: /icon-*
+Allow: /og-image.*
+Allow: /site.webmanifest
+
+# Disallow indexing of private workspaces, user documents, and internal APIs
+Disallow: /documents
+Disallow: /research
+Disallow: /conversations
+Disallow: /insights
+Disallow: /settings
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://documind.local/sitemap.xml
