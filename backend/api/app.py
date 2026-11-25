@@ -57,10 +57,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure tables exist and reconcile orphaned jobs from prior interrupted runs
+    # Startup: ensure tables exist, reconcile orphaned jobs, and resume CHUNKED docs waiting on Ollama
     init_db()
-    from backend.jobs.worker import reconcile_orphaned_jobs
+    from backend.jobs.worker import reconcile_orphaned_jobs, schedule_waiting_embeddings_resume
     reconcile_orphaned_jobs()
+    schedule_waiting_embeddings_resume(force=True)
     yield
 
 app = FastAPI(

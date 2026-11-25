@@ -10,7 +10,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { jobsApi } from '@/services/api';
 import { queryKeys } from '@/services/queryKeys';
-import type { JobResponse, DocumentStatus } from '@/types/api';
+import type { JobResponse, DocumentStatus, DocumentResponse } from '@/types/api';
 
 export type JobStatusType = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -47,7 +47,33 @@ export function isDocumentProcessing(status: DocumentStatus | string | undefined
   );
 }
 
-export function getDocumentStatusLabel(status: DocumentStatus | string | undefined): string {
+/**
+ * True when a document finished Stage A (extraction & chunking) and is searchable
+ * via BM25, but Stage B vector embedding paused/failed (e.g. Ollama unreachable).
+ */
+export function isDocumentWaitingForEmbeddings(
+  doc?: Pick<DocumentResponse, 'status' | 'error_message'> | null
+): boolean {
+  if (!doc) return false;
+  return (doc.status || '').toUpperCase() === 'CHUNKED' && Boolean(doc.error_message);
+}
+
+/**
+ * True only when a document has an active background pipeline running.
+ * Prevents endless UI spinning and polling loops when Stage B is paused/failed.
+ */
+export function isDocumentActivelyProcessing(
+  doc?: Pick<DocumentResponse, 'status' | 'error_message'> | null
+): boolean {
+  if (!doc) return false;
+  if (isDocumentWaitingForEmbeddings(doc)) return false;
+  return isDocumentProcessing(doc.status);
+}
+
+export function getDocumentStatusLabel(
+  status: DocumentStatus | string | undefined,
+  errorMessage?: string | null
+): string {
   if (!status) return 'Unknown';
   switch (status.toUpperCase()) {
     case 'PENDING':
@@ -57,7 +83,9 @@ export function getDocumentStatusLabel(status: DocumentStatus | string | undefin
     case 'EXTRACTED':
       return 'Generating semantic chunks...';
     case 'CHUNKED':
-      return 'Computing vector embeddings...';
+      return errorMessage
+        ? 'Lexical search ready (semantic embeddings paused)'
+        : 'Computing vector embeddings...';
     case 'EMBEDDING':
       return 'Persisting vector index...';
     case 'INDEXED':

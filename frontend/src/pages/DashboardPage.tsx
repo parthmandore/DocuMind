@@ -26,7 +26,7 @@ import { useDocuments, useConversations, useJobs } from '@/hooks/useQueries';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useHealth } from '@/hooks/useHealth';
 import { useRouteMetadata } from '@/hooks/useRouteMetadata';
-import { isDocumentProcessing } from '@/hooks/useJobPolling';
+import { isDocumentActivelyProcessing } from '@/hooks/useJobPolling';
 import { getGreeting, formatRelativeTime } from '@/utils/date';
 import { formatFileSize } from '@/utils/file';
 import { storage } from '@/utils/storage';
@@ -93,7 +93,7 @@ export const DashboardPage: React.FC = () => {
     const indexed = documents.filter(
       (d) => d.status === 'COMPLETED' || d.status === 'INDEXED'
     ).length;
-    const processing = documents.filter((d) => isDocumentProcessing(d.status));
+    const processing = documents.filter((d) => isDocumentActivelyProcessing(d));
     const totalChunks = documents.reduce(
       (acc, d) => acc + (d.total_chunks || 0),
       0
@@ -133,7 +133,7 @@ export const DashboardPage: React.FC = () => {
 
   // Active Processing Items (documents in active pipeline stages)
   const activeProcessingItems = useMemo(() => {
-    return documents.filter((d) => isDocumentProcessing(d.status));
+    return documents.filter((d) => isDocumentActivelyProcessing(d));
   }, [documents]);
 
   const handleOpenConversation = (convId: string) => {
@@ -509,7 +509,10 @@ export const DashboardPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
-                    <DocumentStatusIndicator status={doc.status} />
+                    <DocumentStatusIndicator
+                      status={doc.status}
+                      errorMessage={doc.error_message}
+                    />
                     <ArrowRight className="w-4 h-4 text-content-muted group-hover:text-content-primary transition-colors hidden sm:block" />
                   </div>
                 </div>

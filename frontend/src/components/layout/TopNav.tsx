@@ -49,6 +49,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onToggleMobileMenu }) => {
   const {
     isOnline,
     isGroqActive,
+    isOllamaConnected,
     isLoading,
     refetch,
   } = useHealth();
@@ -98,28 +99,44 @@ export const TopNav: React.FC<TopNavProps> = ({ onToggleMobileMenu }) => {
           <div
             className={cn(
               'flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono border shadow-xs transition-colors',
-              isOnline
-                ? 'border-brand/30 bg-brand/5 text-content-primary'
-                : 'border-border-muted bg-surface-primary text-content-secondary'
+              !isOnline
+                ? 'border-border-muted bg-surface-primary text-content-secondary'
+                : !isOllamaConnected
+                ? 'border-amber-500/40 bg-amber-500/10 text-content-primary'
+                : 'border-brand/30 bg-brand/5 text-content-primary'
             )}
             title={
-              isGroqActive
-                ? 'Groq Cloud API (llama-3.3-70b-versatile) • Local Ollama Embeddings'
-                : 'Local Ollama Engine (llama3.2:3b) • Local Embeddings'
+              !isOnline
+                ? 'Backend API offline'
+                : isGroqActive
+                ? `Groq Cloud API • Local Ollama Embeddings: ${isOllamaConnected ? 'Connected' : 'Offline (start Ollama for semantic indexing)'}`
+                : `Local Ollama Engine: ${isOllamaConnected ? 'Connected' : 'Offline'}`
             }
           >
             <span
               className={cn(
                 'w-2 h-2 rounded-full',
-                isOnline
-                  ? isGroqActive
-                    ? 'bg-brand shadow-sm shadow-brand/50'
-                    : 'bg-status-success shadow-sm shadow-status-success/50'
-                  : 'bg-status-error'
+                !isOnline
+                  ? 'bg-status-error'
+                  : !isOllamaConnected
+                  ? 'bg-amber-400 shadow-sm shadow-amber-400/50'
+                  : isGroqActive
+                  ? 'bg-brand shadow-sm shadow-brand/50'
+                  : 'bg-status-success shadow-sm shadow-status-success/50'
               )}
             />
             <span className="text-[11px] font-medium tracking-tight text-content-primary">
-              {isGroqActive ? 'Groq Active' : 'Local Ollama'}
+              {!isOnline
+                ? isLoading
+                  ? 'Connecting...'
+                  : 'Backend Offline'
+                : isGroqActive
+                ? isOllamaConnected
+                  ? 'Groq Active'
+                  : 'Groq • Ollama Offline'
+                : isOllamaConnected
+                ? 'Local Ollama'
+                : 'Ollama Offline'}
             </span>
           </div>
 

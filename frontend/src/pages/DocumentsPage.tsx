@@ -26,7 +26,10 @@ import {
 } from 'lucide-react';
 import { useDocuments } from '@/hooks/useQueries';
 import { useDeleteDocument, useReindexDocument } from '@/hooks/useMutations';
-import { isDocumentProcessing } from '@/hooks/useJobPolling';
+import {
+  isDocumentActivelyProcessing,
+  isDocumentWaitingForEmbeddings,
+} from '@/hooks/useJobPolling';
 import { formatFileSize } from '@/utils/file';
 import { formatRelativeTime } from '@/utils/date';
 import { formatError } from '@/utils/errors';
@@ -81,7 +84,7 @@ export const DocumentsPage: React.FC = () => {
   } = useDocuments(0, 200, {
     refetchInterval: (query) => {
       const docs = query.state.data;
-      return docs?.some((d) => isDocumentProcessing(d.status)) ? 2000 : false;
+      return docs?.some((d) => isDocumentActivelyProcessing(d)) ? 2000 : false;
     },
   });
 
@@ -108,7 +111,7 @@ export const DocumentsPage: React.FC = () => {
     const ready = documents.filter(
       (d) => d.status === 'COMPLETED' || d.status === 'INDEXED'
     ).length;
-    const processing = documents.filter((d) => isDocumentProcessing(d.status)).length;
+    const processing = documents.filter((d) => isDocumentActivelyProcessing(d)).length;
     const failed = documents.filter((d) => d.status === 'FAILED').length;
 
     return { total, ready, processing, failed };
@@ -126,7 +129,7 @@ export const DocumentsPage: React.FC = () => {
         (d) => d.status === 'COMPLETED' || d.status === 'INDEXED'
       );
     } else if (statusFilter === 'processing') {
-      result = result.filter((d) => isDocumentProcessing(d.status));
+      result = result.filter((d) => isDocumentActivelyProcessing(d));
     } else if (statusFilter === 'failed') {
       result = result.filter((d) => d.status === 'FAILED');
     }
@@ -535,14 +538,23 @@ export const DocumentsPage: React.FC = () => {
                     {/* Status & Processing Indicator */}
                     <td className="py-3.5 px-3 whitespace-nowrap">
                       <div className="space-y-1">
-                        <DocumentStatusIndicator status={doc.status} size="sm" />
-                        {isDocumentProcessing(doc.status) && (
+                        <DocumentStatusIndicator
+                          status={doc.status}
+                          errorMessage={doc.error_message}
+                          size="sm"
+                        />
+                        {isDocumentActivelyProcessing(doc) && (
                           <div className="max-w-[160px]">
                             <IndexingProgressIndicator
                               status={doc.status}
                               embeddingProgress={doc.doc_metadata?.embedding_progress}
                             />
                           </div>
+                        )}
+                        {isDocumentWaitingForEmbeddings(doc) && (
+                          <p className="text-[10px] text-amber-400 max-w-[180px] truncate" title={doc.error_message || undefined}>
+                            Embeddings paused (click Reindex)
+                          </p>
                         )}
                       </div>
                     </td>

@@ -1,10 +1,11 @@
 import React from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { DocumentStatus } from '@/types/api';
 
 export interface DocumentStatusIndicatorProps {
   status: DocumentStatus | string;
+  errorMessage?: string | null;
   size?: 'sm' | 'md';
   showLabel?: boolean;
   className?: string;
@@ -12,6 +13,7 @@ export interface DocumentStatusIndicatorProps {
 
 export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = ({
   status,
+  errorMessage,
   size = 'sm',
   showLabel = true,
   className,
@@ -31,14 +33,27 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
       label = 'Ready';
       break;
 
+    case 'CHUNKED':
+      if (errorMessage) {
+        colorClasses =
+          'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+        icon = <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+        label = 'Lexical Ready';
+      } else {
+        colorClasses =
+          'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30';
+        icon = <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin shrink-0" />;
+        label = 'Chunking';
+      }
+      break;
+
     case 'PROCESSING':
     case 'EXTRACTED':
-    case 'CHUNKED':
     case 'EMBEDDING':
       colorClasses =
         'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30';
       icon = <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin shrink-0" />;
-      label = norm === 'EMBEDDING' ? 'Embedding' : norm === 'CHUNKED' ? 'Chunking' : 'Processing';
+      label = norm === 'EMBEDDING' ? 'Embedding' : 'Processing';
       break;
 
     case 'PENDING':

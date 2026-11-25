@@ -4,6 +4,7 @@ import type { DocumentStatus } from '@/types/api';
 
 export interface IndexingProgressIndicatorProps {
   status: DocumentStatus | string;
+  isPaused?: boolean;
   className?: string;
   embeddingProgress?: {
     completed: number;
@@ -23,6 +24,7 @@ const STAGES = [
 
 export const IndexingProgressIndicator: React.FC<IndexingProgressIndicatorProps> = ({
   status,
+  isPaused = false,
   className,
   embeddingProgress,
   showSearchableBadge = true,
@@ -72,8 +74,8 @@ export const IndexingProgressIndicator: React.FC<IndexingProgressIndicatorProps>
             </span>
           )}
         </span>
-        <span className={isFailed ? 'text-status-error' : 'text-brand font-mono font-semibold'}>
-          {isFailed ? 'Error' : progressLabel}
+        <span className={isFailed ? 'text-status-error' : isPaused ? 'text-amber-400 font-mono font-semibold' : 'text-brand font-mono font-semibold'}>
+          {isFailed ? 'Error' : isPaused ? 'Paused' : progressLabel}
         </span>
       </div>
 
@@ -91,6 +93,8 @@ export const IndexingProgressIndicator: React.FC<IndexingProgressIndicatorProps>
                     ? 'bg-status-error/30'
                     : isDone
                     ? 'bg-brand shadow-xs shadow-brand/20'
+                    : isCurrent && isPaused
+                    ? 'bg-amber-500/60'
                     : isCurrent
                     ? 'bg-brand/60 animate-pulse'
                     : 'bg-surface-secondary'

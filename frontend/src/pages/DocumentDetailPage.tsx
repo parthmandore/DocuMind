@@ -28,7 +28,10 @@ import {
 } from 'lucide-react';
 import { useDocument, useDocumentContent, useConversations } from '@/hooks/useQueries';
 import { useDeleteDocument, useReindexDocument } from '@/hooks/useMutations';
-import { isDocumentProcessing } from '@/hooks/useJobPolling';
+import {
+  isDocumentActivelyProcessing,
+  isDocumentWaitingForEmbeddings,
+} from '@/hooks/useJobPolling';
 import { formatFileSize } from '@/utils/file';
 import { formatDate, formatRelativeTime } from '@/utils/date';
 import { formatError } from '@/utils/errors';
@@ -76,8 +79,7 @@ export const DocumentDetailPage: React.FC = () => {
     refetch: refetchDoc,
   } = useDocument(documentId, {
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return isDocumentProcessing(status) ? 2500 : false;
+      return isDocumentActivelyProcessing(query.state.data) ? 2500 : false;
     },
   });
 
@@ -107,7 +109,8 @@ export const DocumentDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('viewer');
 
   // Background Job Processing check
-  const isProcessing = isDocumentProcessing(document?.status);
+  const isProcessing = isDocumentActivelyProcessing(document);
+  const isWaitingForEmbeddings = isDocumentWaitingForEmbeddings(document);
 
   const isPdf = useMemo(() => {
     if (!document) return false;
@@ -164,7 +167,7 @@ export const DocumentDetailPage: React.FC = () => {
       bbox = {
         x0: b.x0,
         y0: b.y0,
-        x1: b.y1,
+        x1: b.x1,
         y1: b.y1,
         page: b.page || page,
       };
@@ -436,15 +439,58 @@ export const DocumentDetailPage: React.FC = () => {
                 Ingestion Pipeline Active
               </span>
               <span className="text-content-muted">•</span>
-              <ProcessingStageLabel status={document.status} />
+              <ProcessingStageLabel
+                status={document.status}
+                errorMessage={document.error_message}
+              />
             </div>
-            <DocumentStatusIndicator status={document.status} size="sm" />
+            <DocumentStatusIndicator
+              status={document.status}
+              errorMessage={document.error_message}
+              size="sm"
+            />
           </div>
           <IndexingProgressIndicator
             status={document.status}
             embeddingProgress={document.doc_metadata?.embedding_progress}
           />
         </Card>
+      )}
+
+      {/* Paused / Failed Ingestion Banner */}
+      {!isProcessing && document.error_message && (
+        <Alert
+          variant={isWaitingForEmbeddings ? 'warning' : 'error'}
+          title={
+            isWaitingForEmbeddings
+              ? 'Semantic Embeddings Paused — Lexical Search Ready'
+              : 'Ingestion Pipeline Failed'
+          }
+          icon={<AlertTriangle className="w-4 h-4" />}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-2 flex-1">
+              <p className="text-xs leading-relaxed">{document.error_message}</p>
+              {isWaitingForEmbeddings && (
+                <IndexingProgressIndicator
+                  status={document.status}
+                  isPaused
+                  embeddingProgress={document.doc_metadata?.embedding_progress}
+                />
+              )}
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleReindex}
+              isLoading={reindexMutation.isPending}
+              icon={<RotateCw className="w-3.5 h-3.5" />}
+              className="shrink-0"
+            >
+              {isWaitingForEmbeddings ? 'Retry Embeddings' : 'Retry Indexing'}
+            </Button>
+          </div>
+        </Alert>
       )}
 
       {/* ----------------------------------------------------------------- */}
@@ -492,7 +538,11 @@ export const DocumentDetailPage: React.FC = () => {
             Ingestion Status
           </span>
           <div className="pt-0.5">
-            <DocumentStatusIndicator status={document.status} size="sm" />
+            <DocumentStatusIndicator
+              status={document.status}
+              errorMessage={document.error_message}
+              size="sm"
+            />
           </div>
           <p className="text-[11px] text-content-muted">
             Uploaded {formatRelativeTime(document.created_at)}
@@ -539,7 +589,11 @@ export const DocumentDetailPage: React.FC = () => {
 
         {/* TAB 2: Chunks Inspector */}
         {activeTab === 'chunks' && (
-          <ChunkInspector documentId={document.id} />
+          <ChunkInspector
+            documentId={document.id}
+            docStatus={document.status}
+            errorMessage={document.error_message}
+          />
         )}
 
         {/* TAB 3: Extracted Content / Outline */}

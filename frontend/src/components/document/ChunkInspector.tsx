@@ -28,11 +28,15 @@ import { useToast } from '@/hooks/useToast';
 
 export interface ChunkInspectorProps {
   documentId: string;
+  docStatus?: string;
+  errorMessage?: string | null;
   className?: string;
 }
 
 export const ChunkInspector: React.FC<ChunkInspectorProps> = ({
   documentId,
+  docStatus,
+  errorMessage,
   className = '',
 }) => {
   const toast = useToast();
@@ -145,12 +149,23 @@ export const ChunkInspector: React.FC<ChunkInspectorProps> = ({
                 </div>
 
                 <Badge
-                  variant={indexingStatus.is_indexed ? 'success' : 'processing'}
+                  variant={
+                    indexingStatus.is_indexed
+                      ? 'success'
+                      : errorMessage || docStatus === 'FAILED'
+                      ? 'warning'
+                      : 'processing'
+                  }
                 >
                   {indexingStatus.is_indexed ? (
                     <>
                       <CheckCircle2 className="w-3 h-3 mr-1 inline" />
                       100% Embedded
+                    </>
+                  ) : errorMessage ? (
+                    <>
+                      <Clock className="w-3 h-3 mr-1 inline" />
+                      Lexical Only ({indexingStatus.embedded_chunks}/{indexingStatus.total_chunks} Embedded)
                     </>
                   ) : (
                     <>

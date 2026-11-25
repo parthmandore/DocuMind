@@ -37,16 +37,51 @@ class IngestionService:
             .filter(Document.file_hash == file_hash)
             .first()
         )
-        if existing_doc and existing_doc.status == DocumentStatus.COMPLETED.value:
-            # Found existing completed document
-            # Find its last job or create a reference
+        if existing_doc:
             last_job = (
                 db.query(ProcessingJob)
                 .filter(ProcessingJob.document_id == existing_doc.id)
                 .order_by(ProcessingJob.created_at.desc())
                 .first()
             )
-            return existing_doc, last_job, True
+            if existing_doc.status == DocumentStatus.COMPLETED.value:
+                return existing_doc, last_job, True
+
+            if existing_doc.status in (
+                DocumentStatus.PENDING.value,
+                DocumentStatus.PROCESSING.value,
+                DocumentStatus.EMBEDDING.value,
+            ):
+                active_job = (
+                    db.query(ProcessingJob)
+                    .filter(
+                        ProcessingJob.document_id == existing_doc.id,
+                        ProcessingJob.status.in_([JobStatus.PENDING.value, JobStatus.RUNNING.value]),
+                    )
+                    .order_by(ProcessingJob.created_at.desc())
+                    .first()
+                )
+                if active_job:
+                    return existing_doc, active_job, True
+
+            # Existing document was CHUNKED (waiting on Ollama) or FAILED:
+            # Reuse record and re-trigger processing instead of creating an orphan duplicate.
+            if not existing_doc.storage_path or not os.path.isfile(existing_doc.storage_path):
+                existing_doc.storage_path = save_uploaded_file(existing_doc.id, safe_name, content)
+            existing_doc.status = DocumentStatus.PENDING.value
+            existing_doc.error_message = None
+
+            retry_job = ProcessingJob(
+                id=str(uuid.uuid4()),
+                document_id=existing_doc.id,
+                job_type="reindex" if existing_doc.total_chunks > 0 else "document_ingestion",
+                status=JobStatus.PENDING.value,
+            )
+            db.add(retry_job)
+            db.commit()
+            db.refresh(existing_doc)
+            db.refresh(retry_job)
+            return existing_doc, retry_job, False
 
         doc_id = str(uuid.uuid4())
         ext = os.path.splitext(safe_name)[1].lower()

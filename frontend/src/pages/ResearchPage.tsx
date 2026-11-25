@@ -38,7 +38,7 @@ import {
 
 import { useDocuments, useConversation } from '@/hooks/useQueries';
 import { useExecuteQuery } from '@/hooks/useMutations';
-import { isDocumentProcessing } from '@/hooks/useJobPolling';
+import { isDocumentActivelyProcessing } from '@/hooks/useJobPolling';
 import { useRouteMetadata } from '@/hooks/useRouteMetadata';
 import type { GroundedAnswer, CitationItem, MessageResponse } from '@/types/api';
 
@@ -133,7 +133,7 @@ export const ResearchPage: React.FC = () => {
   const queryMutation = useExecuteQuery();
 
   const processingDocuments = useMemo(
-    () => documents.filter((d) => isDocumentProcessing(d.status)),
+    () => documents.filter((d) => isDocumentActivelyProcessing(d)),
     [documents]
   );
 
@@ -164,10 +164,13 @@ export const ResearchPage: React.FC = () => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Ready documents for querying
+  // Ready documents for querying (includes lexical-ready CHUNKED docs with BM25 fallback)
   const readyDocuments = useMemo(() => {
     return documents.filter(
-      (d) => d.status === 'COMPLETED' || d.status === 'INDEXED'
+      (d) =>
+        d.status === 'COMPLETED' ||
+        d.status === 'INDEXED' ||
+        (d.status === 'CHUNKED' && (d.total_chunks || 0) > 0)
     );
   }, [documents]);
 
